@@ -22,6 +22,15 @@ const PREDEFINED_THEMES = [
   { label: 'Gaming 🎮', value: 'Gamer' },
 ];
 
+const EDIT_STYLES = [
+  { id: 'none', label: 'Default', prompt: '' },
+  { id: 'vintage', label: 'Vintage 🎞️', prompt: 'in a vintage, nostalgic film style with warm sepia tones, light grain, and soft focus' },
+  { id: 'cartoonish', label: 'Cartoon 🎨', prompt: 'in a vibrant 3D cartoonish style with expressive eyes, bold colors, and soft lighting' },
+  { id: 'photorealistic', label: 'Realistic 📸', prompt: 'in a crisp, high-end photorealistic style with natural depth of field and sharp textures' },
+  { id: 'oilpainting', label: 'Oil Painting 🖌️', prompt: 'as a rich oil painting with visible textured brushstrokes and classical museum lighting' },
+  { id: 'cyberpunk', label: 'Cyberpunk 🌆', prompt: 'in a futuristic cyberpunk style with neon pink and blue lighting, high contrast, and atmospheric haze' }
+];
+
 const CreatePost: React.FC<CreatePostProps> = ({ pets, ownerId, onPostCreated }) => {
   const [selectedPetId, setSelectedPetId] = useState(pets[0]?.id || '');
   const [content, setContent] = useState('');
@@ -32,6 +41,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ pets, ownerId, onPostCreated })
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMsg, setProcessingMsg] = useState('');
   const [editPrompt, setEditPrompt] = useState('');
+  const [editStyle, setEditStyle] = useState('none');
   const [showEditInput, setShowEditInput] = useState(false);
   
   const [stickerTheme, setStickerTheme] = useState('');
@@ -65,8 +75,6 @@ const CreatePost: React.FC<CreatePostProps> = ({ pets, ownerId, onPostCreated })
     
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        // In a real production app, we would reverse geocode these coordinates.
-        // For this demo, we'll format them nicely and use a mock locality.
         const { latitude, longitude } = position.coords;
         const coords = `${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`;
         setLocationTag(`Near ${coords}`);
@@ -84,14 +92,26 @@ const CreatePost: React.FC<CreatePostProps> = ({ pets, ownerId, onPostCreated })
   };
 
   const handleAiEdit = async () => {
-    if (!image || !editPrompt) return;
+    if (!image) return;
+    
+    const styleObj = EDIT_STYLES.find(s => s.id === editStyle);
+    const finalPrompt = `${editPrompt} ${styleObj?.prompt || ''}`.trim();
+    
+    if (!finalPrompt) {
+      alert("Please enter an instruction or select a style! 🪄");
+      return;
+    }
+
     setIsProcessing(true);
-    setProcessingMsg('Applying edits...');
-    const result = await geminiService.editImage(editPrompt, image);
+    setProcessingMsg('Applying AI magic...');
+    const result = await geminiService.editImage(finalPrompt, image);
     if (result) {
       setImage(result);
       setEditPrompt('');
+      setEditStyle('none');
       setShowEditInput(false);
+    } else {
+      alert("AI failed to transform the image. Try a different prompt!");
     }
     setIsProcessing(false);
     setProcessingMsg('');
@@ -211,9 +231,6 @@ const CreatePost: React.FC<CreatePostProps> = ({ pets, ownerId, onPostCreated })
 
         <div className="relative">
           <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="What's happening?" className="w-full bg-gray-50 border-gray-100 rounded-2xl p-4 text-gray-700 min-h-[120px] focus:ring-2 focus:ring-red-400 outline-none resize-none border" />
-          <div className="absolute bottom-3 right-3 flex gap-2">
-             <span className="text-[10px] font-bold text-gray-300 uppercase">Resonates with AI tools below</span>
-          </div>
         </div>
 
         {/* Media Upload Section */}
@@ -240,7 +257,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ pets, ownerId, onPostCreated })
 
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                    <button type="button" title="Resonate Background" onClick={handleResonateBg} className="bg-white p-4 rounded-full text-purple-500 shadow-xl transform hover:scale-110 transition-transform active:scale-95"><Icons.Sparkles /></button>
-                   <button type="button" title="Edit with Prompt" onClick={() => setShowEditInput(!showEditInput)} className="bg-white p-4 rounded-full text-gray-800 shadow-xl transform hover:scale-110 transition-transform active:scale-95"><Icons.Magic /></button>
+                   <button type="button" title="AI Edit (Prompt + Style)" onClick={() => setShowEditInput(!showEditInput)} className={`p-4 rounded-full shadow-xl transform hover:scale-110 transition-transform active:scale-95 ${showEditInput ? 'bg-red-500 text-white' : 'bg-white text-gray-800'}`}><Icons.Magic /></button>
                    <button type="button" title="Animate (Veo)" onClick={handleAnimate} className="bg-white p-4 rounded-full text-red-500 shadow-xl transform hover:scale-110 transition-transform active:scale-95"><Icons.Video /></button>
                    <button type="button" title="Generate Sticker" onClick={() => setShowStickerInput(!showStickerInput)} className="bg-white p-4 rounded-full text-yellow-500 shadow-xl transform hover:scale-110 transition-transform active:scale-95">
                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
@@ -249,9 +266,43 @@ const CreatePost: React.FC<CreatePostProps> = ({ pets, ownerId, onPostCreated })
               </div>
               
               {showEditInput && (
-                <div className="flex gap-2 animate-in slide-in-from-top-2">
-                  <input type="text" value={editPrompt} onChange={(e) => setEditPrompt(e.target.value)} placeholder="E.g. Add a retro film grain..." className="flex-1 bg-gray-100 border border-gray-200 rounded-xl px-4 py-2 text-sm outline-none focus:ring-1 focus:ring-red-500" />
-                  <button type="button" onClick={handleAiEdit} className="bg-red-500 text-white px-4 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-transform">Apply</button>
+                <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200 animate-in slide-in-from-top-2 space-y-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">1. Pick an Artistic Style</p>
+                    <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                      {EDIT_STYLES.map(style => (
+                        <button
+                          key={style.id}
+                          type="button"
+                          onClick={() => setEditStyle(style.id)}
+                          className={`flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${editStyle === style.id ? 'bg-red-500 text-white border-red-400 shadow-md scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-red-200'}`}
+                        >
+                          {style.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">2. Custom Instructions (Optional)</p>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={editPrompt} 
+                        onChange={(e) => setEditPrompt(e.target.value)} 
+                        placeholder="e.g. Add a superhero cape..." 
+                        className="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-red-500" 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={handleAiEdit} 
+                        disabled={isProcessing}
+                        className="bg-red-500 text-white px-6 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-transform disabled:opacity-50"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -273,7 +324,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ pets, ownerId, onPostCreated })
               </div>
               <div className="text-center">
                 <span className="text-sm font-bold block">Upload Photo or Video</span>
-                <span className="text-[10px] uppercase tracking-widest font-bold opacity-60">AI Resonance available for images</span>
+                <span className="text-[10px] uppercase tracking-widest font-bold opacity-60">AI Resonance & Editing available for images</span>
               </div>
             </button>
           )}

@@ -1,5 +1,5 @@
 {
-  "name": "PawNet",
+  "name": "PawSocialNet",
   "description": "A premier social media platform designed exclusively for animals and their humans. Features cross-platform social integration, AI-powered caption generation, and priority escalation for birthdays and lost pets.",
   "requestFramePermissions": [
     "camera",

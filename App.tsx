@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { AlertType, Pet, Post, Owner } from './types';
+import { AlertType, Pet, Post, Owner, PetEvent, EventType, PetAlert } from './types';
 import { Icons, COLORS } from './constants';
 import Feed from './components/Feed';
 import Profile from './components/Profile';
@@ -9,26 +9,70 @@ import CreatePost from './components/CreatePost';
 import Search from './components/Search';
 import AlertBanner from './components/AlertBanner';
 import Messages from './components/Messages';
-
-const MOCK_OWNER: Owner = {
-  id: 'owner-1',
-  name: 'Alex Johnson',
-  avatar: 'https://picsum.photos/seed/alex/150',
-  socialLinks: [{ platform: 'Instagram', handle: '@alex_petlover' }],
-  followingCount: 142,
-  followersCount: 890
-};
+import PawDate from './components/PawDate';
+import Auth from './components/Auth';
 
 const INITIAL_PETS: Pet[] = [
-  { id: 'pet-1', name: 'Luna', species: 'Cat', breed: 'Maine Coon', birthday: '2020-05-15', photo: 'https://picsum.photos/seed/catluna/600/600', ownerId: 'owner-1', status: AlertType.NONE },
-  { id: 'pet-2', name: 'Cooper', species: 'Dog', breed: 'Golden Retriever', birthday: '2018-11-20', photo: 'https://picsum.photos/seed/dogcooper/600/600', ownerId: 'owner-1', status: AlertType.NONE },
+  { 
+    id: 'pet-1', 
+    name: 'Luna', 
+    species: 'Cat', 
+    breed: 'Maine Coon', 
+    birthday: '2020-05-15', 
+    photo: 'https://picsum.photos/seed/catluna/600/600', 
+    ownerId: 'owner-1', 
+    status: AlertType.NONE,
+    customAlerts: [
+      { id: 'al-1', title: 'Vet Checkup', date: '2024-05-20', type: 'VET', description: 'Annual rabies shot and general physical.' }
+    ]
+  },
+  { 
+    id: 'pet-2', 
+    name: 'Cooper', 
+    species: 'Dog', 
+    breed: 'Golden Retriever', 
+    birthday: '2018-11-20', 
+    photo: 'https://picsum.photos/seed/dogcooper/600/600', 
+    ownerId: 'owner-1', 
+    status: AlertType.NONE,
+    customAlerts: [
+      { id: 'al-2', title: 'Heartworm Meds', date: '2024-05-01', type: 'MED' }
+    ]
+  },
   { id: 'pet-3', name: 'Milo', species: 'Dog', breed: 'Beagle', birthday: '2021-02-10', photo: 'https://picsum.photos/seed/milo/600/600', ownerId: 'owner-2', status: AlertType.NONE },
-  { id: 'pet-4', name: 'Oliver', species: 'Cat', breed: 'Siamese', birthday: '2019-08-22', photo: 'https://picsum.photos/seed/oliver/600/600', ownerId: 'owner-3', status: AlertType.NONE }
+  { id: 'pet-4', name: 'Oliver', species: 'Cat', breed: 'Siamese', birthday: '2019-08-22', photo: 'https://picsum.photos/seed/oliver/600/600', ownerId: 'owner-3', status: AlertType.NONE },
+  { id: 'pet-adopt-1', name: 'Buddy', species: 'Dog', breed: 'Labrador Mix', birthday: '2022-01-10', photo: 'https://picsum.photos/seed/buddyadopt/600/600', ownerId: 'owner-4', status: AlertType.ADOPTION, bio: 'A high-energy pup looking for an active family to go on runs with! Super friendly and loves kids.' },
+  { id: 'pet-adopt-2', name: 'Whiskers', species: 'Cat', breed: 'Tabby', birthday: '2021-06-05', photo: 'https://picsum.photos/seed/whiskersadopt/600/600', ownerId: 'owner-5', status: AlertType.ADOPTION, bio: 'Quiet, independent, but loves a good head scratch. Whiskers is looking for a calm forever home.' }
 ];
 
 const INITIAL_POSTS: Post[] = [
   { id: 'p-1', petId: 'pet-1', ownerId: 'owner-1', content: "Moth hunting level: Pro. 😼", imageUrl: 'https://picsum.photos/seed/catpost1/800/800', likes: 42, comments: 5, timestamp: new Date() },
   { id: 'p-3', petId: 'pet-2', ownerId: 'owner-1', content: "Big stick energy! 🐕💨", videoUrl: 'https://www.w3schools.com/html/mov_bbb.mp4', likes: 88, comments: 14, timestamp: new Date() }
+];
+
+const INITIAL_EVENTS: PetEvent[] = [
+  {
+    id: 'e-1',
+    title: 'Puppy Speed Dating',
+    description: 'Find a playmate for your pup and maybe a date for yourself! Complimentary treats for all.',
+    location: 'Central Bark Park',
+    date: new Date(Date.now() + 86400000 * 3),
+    organizerId: 'owner-2',
+    attendeesCount: 12,
+    type: EventType.DATE,
+    imageUrl: 'https://picsum.photos/seed/speeddate/800/400'
+  },
+  {
+    id: 'e-2',
+    title: 'Cat Cafe Singles Mixer',
+    description: 'A cozy evening for cat lovers to connect over coffee and kittens.',
+    location: 'Meow & Mingle Cafe',
+    date: new Date(Date.now() + 86400000 * 5),
+    organizerId: 'owner-3',
+    attendeesCount: 8,
+    type: EventType.DATE,
+    imageUrl: 'https://picsum.photos/seed/catmixer/800/400'
+  }
 ];
 
 interface Notification {
@@ -72,6 +116,7 @@ const Navbar: React.FC<{ unreadCount: number }> = ({ unreadCount }) => {
     <nav className="fixed bottom-0 left-0 right-0 glass z-50 px-6 py-4 flex justify-around items-center rounded-t-3xl shadow-2xl md:top-0 md:bottom-auto md:flex-col md:h-screen md:w-20 md:rounded-none md:rounded-r-3xl md:py-10">
       <Link to="/" className={location.pathname === '/' ? activeClass : inactiveClass}><Icons.Home /></Link>
       <Link to="/search" className={location.pathname === '/search' ? activeClass : inactiveClass}><Icons.Search /></Link>
+      <Link to="/pawdate" className={location.pathname === '/pawdate' ? activeClass : inactiveClass}><Icons.Heart /></Link>
       <Link to="/create" className="bg-red-500 text-white p-3 rounded-full shadow-lg hover:bg-red-600 transition-all transform hover:scale-110"><Icons.Plus /></Link>
       <Link to="/messages" className={`relative ${location.pathname === '/messages' ? activeClass : inactiveClass}`}>
         <Icons.Message />
@@ -87,8 +132,10 @@ const Navbar: React.FC<{ unreadCount: number }> = ({ unreadCount }) => {
 };
 
 const App: React.FC = () => {
+  const [currentUser, setCurrentUser] = useState<Owner | null>(null);
   const [pets, setPets] = useState<Pet[]>(INITIAL_PETS);
   const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
+  const [events, setEvents] = useState<PetEvent[]>(INITIAL_EVENTS);
   const [notification, setNotification] = useState<Notification | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [followedOwnerIds, setFollowedOwnerIds] = useState<Set<string>>(new Set(['owner-2']));
@@ -121,6 +168,30 @@ const App: React.FC = () => {
 
   const updatePetStatus = (petId: string, status: AlertType, location?: string) => setPets(prev => prev.map(p => p.id === petId ? { ...p, status, lastSeenLocation: location } : p));
 
+  const handleAddPetAlert = (petId: string, alert: PetAlert) => {
+    setPets(prev => prev.map(p => {
+      if (p.id === petId) {
+        return {
+          ...p,
+          customAlerts: [...(p.customAlerts || []), alert]
+        };
+      }
+      return p;
+    }));
+  };
+
+  const handleRemovePetAlert = (petId: string, alertId: string) => {
+    setPets(prev => prev.map(p => {
+      if (p.id === petId) {
+        return {
+          ...p,
+          customAlerts: p.customAlerts?.filter(a => a.id !== alertId)
+        };
+      }
+      return p;
+    }));
+  };
+
   const handleIncomingMessage = (text: string, senderName: string, senderAvatar: string) => {
     if (window.location.hash !== '#/messages') {
       setNotification({
@@ -142,6 +213,54 @@ const App: React.FC = () => {
     });
   };
 
+  const handleJoinEvent = (eventId: string) => {
+    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, attendeesCount: e.attendeesCount + 1 } : e));
+    alert("You're on the list! Don't forget to bring your fuzzy plus-one! 🐾❤️");
+  };
+
+  const handleLogin = (user: Owner, extractedPet?: Pet) => {
+    if (extractedPet) {
+      setPets(prev => [extractedPet, ...prev]);
+      
+      // Also create a first post for the extracted activity
+      if (extractedPet.recentSocialActivity) {
+        const firstPost: Post = {
+          id: `p-extracted-${Date.now()}`,
+          petId: extractedPet.id,
+          ownerId: user.id,
+          content: `Extracted Social Update: ${extractedPet.recentSocialActivity} 🐾✨`,
+          imageUrl: extractedPet.photo,
+          likes: 5,
+          comments: 1,
+          timestamp: new Date()
+        };
+        setPosts(prev => [firstPost, ...prev]);
+      }
+    } else if (user.id !== 'owner-1') {
+      // Basic fallback if no pet extracted
+      const starterPet: Pet = {
+         id: `pet-${Date.now()}`,
+         name: 'Sparky',
+         species: 'Dog',
+         breed: 'Puppy',
+         birthday: '2023-01-01',
+         photo: 'https://picsum.photos/seed/sparky/600/600',
+         ownerId: user.id,
+         status: AlertType.NONE
+      };
+      setPets(prev => [starterPet, ...prev]);
+    }
+    setCurrentUser(user);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+  };
+
+  if (!currentUser) {
+    return <Auth onLogin={handleLogin} />;
+  }
+
   return (
     <HashRouter>
       <div className="min-h-screen pb-24 md:pb-0 md:pl-20">
@@ -155,11 +274,24 @@ const App: React.FC = () => {
             </h1>
           </header>
           <Routes>
-            <Route path="/" element={<Feed posts={posts} pets={pets} onUpdatePost={updatePost} onToggleLike={toggleLike} onComment={incrementComments} />} />
-            <Route path="/search" element={<Search pets={pets} followedOwnerIds={followedOwnerIds} onToggleFollow={toggleFollow} currentOwnerId={MOCK_OWNER.id} />} />
-            <Route path="/create" element={<CreatePost pets={pets.filter(p => p.ownerId === MOCK_OWNER.id)} ownerId={MOCK_OWNER.id} onPostCreated={addPost} />} />
-            <Route path="/messages" element={<Messages currentOwner={MOCK_OWNER} onIncomingMessage={handleIncomingMessage} onMessagesViewed={() => setUnreadCount(0)} />} />
-            <Route path="/profile" element={<Profile owner={MOCK_OWNER} pets={pets} posts={posts} onUpdateStatus={updatePetStatus} onUpdatePost={updatePost} followedOwnerIds={followedOwnerIds} />} />
+            <Route path="/" element={<Feed posts={posts} pets={pets} onUpdatePost={updatePost} onToggleLike={toggleLike} onComment={incrementComments} currentOwnerId={currentUser.id} />} />
+            <Route path="/search" element={<Search pets={pets} followedOwnerIds={followedOwnerIds} onToggleFollow={toggleFollow} currentOwnerId={currentUser.id} />} />
+            <Route path="/pawdate" element={<PawDate events={events} pets={pets} onJoinEvent={handleJoinEvent} currentOwnerId={currentUser.id} />} />
+            <Route path="/create" element={<CreatePost pets={pets.filter(p => p.ownerId === currentUser.id)} ownerId={currentUser.id} onPostCreated={addPost} />} />
+            <Route path="/messages" element={<Messages currentOwner={currentUser} onIncomingMessage={handleIncomingMessage} onMessagesViewed={() => setUnreadCount(0)} />} />
+            <Route path="/profile" element={
+              <Profile 
+                owner={currentUser} 
+                pets={pets} 
+                posts={posts} 
+                onUpdateStatus={updatePetStatus} 
+                onUpdatePost={updatePost} 
+                followedOwnerIds={followedOwnerIds} 
+                onAddAlert={handleAddPetAlert}
+                onRemoveAlert={handleRemovePetAlert}
+                onLogout={handleLogout}
+              />
+            } />
           </Routes>
         </main>
         <Navbar unreadCount={unreadCount} />
